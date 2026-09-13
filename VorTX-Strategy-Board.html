@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Strategy Board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#000000;
+    --panel:#141619;
+    --panel-2:#1a1d21;
+    --panel-3:#20242a;
+    --border:rgba(127,194,65,0.20);
+    --border-soft:rgba(255,255,255,0.08);
+    --text:#eceef1;
+    --muted:#868d98;
+    --muted-dim:#565b63;
+    --blue:#4d7fe0;
+    --blue-bright:#7fa2ec;
+    --red:#d1554a;
+    --red-bright:#ec8177;
+    --gold:#d7a83e;
+    --robot-blue:#0000ff;
+    --robot-red:#d40a0a;
+    --robot-fill:#242429;
+    --bar-blue-body:#1c1c99;
+    --bar-blue-cap:#0d0d6e;
+    --bar-red-body:#9e2323;
+    --bar-red-cap:#721616;
+    --hex-color:#8a8a8a;
+    --accent:#7fc241;
+    --accent-bright:#9edb64;
+    --accent-text:#0a2306;
+    --font-ui:'Space Grotesk', system-ui, -apple-system, sans-serif;
+    --font-mono:'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; padding:0; height:100%; width:100%;
+    background:var(--bg); color:var(--text);
+    font-family:var(--font-ui);
+    -webkit-tap-highlight-color:transparent;
+    overscroll-behavior:none;
+  }
+  #app{ position:fixed; inset:0; overflow:hidden; display:flex; flex-direction:column; }
+  button{ font-family:inherit; }
+  input{ font-family:inherit; }
+
+  /* ---------- SCREENS ---------- */
+  .screen{ position:absolute; inset:0; display:flex; flex-direction:column; opacity:0; pointer-events:none; transition:opacity .18s ease; }
+  .screen.active{ opacity:1; pointer-events:auto; }
+
+  /* ---------- HOME ---------- */
+  #home-header{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px clamp(16px,4vw,40px) 14px;
+    flex-shrink:0;
+  }
+  .logo-block{ display:flex; flex-direction:row; align-items:center; gap:9px; }
+  .logo-mark{ height:24px; width:auto; flex-shrink:0; display:block; opacity:0.92; }
+  .logo-text-wrap{ display:flex; flex-direction:column; gap:6px; }
+  .logo-text{
+    font-family:var(--font-ui); font-weight:700;
+    font-size:clamp(22px,3.4vw,32px);
+    letter-spacing:0.5px;
+    color:var(--text);
+    display:flex; align-items:baseline; gap:2px;
+  }
+  .logo-rule{ width:46px; height:3px; background:var(--accent); border-radius:2px; }
+  .add-btn{
+    width:48px; height:48px; border-radius:50%;
+    background:var(--accent); border:none; color:var(--accent-text);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; flex-shrink:0;
+    box-shadow:0 4px 14px rgba(127,194,65,0.3);
+    transition:transform .12s ease, box-shadow .12s ease;
+  }
+  .add-btn:active{ transform:scale(0.92); }
+  .add-btn svg{ width:22px; height:22px; }
+
+  #match-list-wrap{
+    flex:1; overflow-y:auto;
+    padding:6px clamp(16px,4vw,40px) 40px;
+  }
+  .match-list{ max-width:900px; margin:0 auto; display:flex; flex-direction:column; gap:10px; }
+
+  .match-row{
+    position:relative;
+    display:flex; align-items:center; gap:18px;
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:10px; padding:16px 18px;
+    cursor:pointer;
+    transition:background .12s ease, border-color .12s ease;
+  }
+  .match-row:active{ background:var(--panel-2); }
+  .match-number{
+    font-family:var(--font-mono); font-weight:600;
+    font-size:20px; color:var(--muted);
+    width:34px; flex-shrink:0; text-align:center;
+  }
+  .match-teams{
+    flex:1; display:flex; align-items:center; justify-content:center;
+    gap:10px; font-family:var(--font-mono); font-size:15px;
+    flex-wrap:wrap; min-width:0;
+  }
+  .team-set{ display:flex; gap:8px; }
+  .team-set.red span{ color:var(--red-bright); }
+  .team-set.blue span{ color:var(--blue-bright); }
+  .vs-label{ color:var(--muted-dim); font-family:var(--font-ui); font-size:12px; letter-spacing:1px; }
+
+  .dots-btn{
+    width:34px; height:34px; border-radius:8px; border:none;
+    background:transparent; color:var(--muted);
+    display:flex; align-items:center; justify-content:center;
+    cursor:pointer; flex-shrink:0;
+  }
+  .dots-btn:active{ background:var(--panel-3); }
+
+  .row-menu{
+    position:absolute; top:52px; right:16px;
+    background:var(--panel-3); border:1px solid var(--border);
+    border-radius:10px; overflow:hidden; z-index:50;
+    box-shadow:0 10px 30px rgba(0,0,0,0.5);
+    display:none; min-width:150px;
+  }
+  .row-menu.open{ display:block; }
+  .row-menu button{
+    display:block; width:100%; text-align:left;
+    background:none; border:none; color:var(--red-bright);
+    padding:12px 16px; font-size:14px; cursor:pointer;
+  }
+  .row-menu button:active{ background:rgba(209,85,74,0.12); }
+
+  .empty-state{
+    max-width:900px; margin:60px auto; text-align:center;
+    color:var(--muted); font-size:15px; line-height:1.6;
+  }
+  .empty-state strong{ display:block; color:var(--text); font-size:18px; margin-bottom:6px; font-weight:600; }
+
+  /* ---------- MODAL ---------- */
+  #modal-overlay{
+    position:fixed; inset:0; background:rgba(0,0,0,0.72);
+    display:flex; align-items:center; justify-content:center;
+    z-index:200; opacity:0; pointer-events:none; transition:opacity .15s ease;
+    padding:20px;
+  }
+  #modal-overlay.open{ opacity:1; pointer-events:auto; }
+  .modal{
+    width:100%; max-width:440px;
+    background:var(--panel); border:1px solid var(--border);
+    border-radius:14px; overflow:hidden;
+    transform:translateY(8px) scale(0.98); transition:transform .15s ease;
+  }
+  #modal-overlay.open .modal{ transform:translateY(0) scale(1); }
+  .modal-header{
+    padding:20px 22px 16px; text-align:center;
+    border-bottom:1px solid var(--border-soft);
+  }
+  .modal-header h2{ margin:0; font-size:18px; font-weight:600; color:var(--accent); letter-spacing:0.3px; }
+  .modal-body{ padding:20px 22px 6px; display:flex; flex-direction:column; gap:14px; }
+  .field-label{ font-size:11px; text-transform:uppercase; letter-spacing:1px; color:var(--muted); margin-bottom:6px; display:block; }
+  .match-num-input{
+    width:100%; background:var(--panel-2); border:1px solid var(--border);
+    border-radius:8px; padding:12px 14px; color:var(--text);
+    font-family:var(--font-mono); font-size:16px; outline:none;
+  }
+  .match-num-input:focus{ border-color:var(--accent); }
+  .team-grid{ display:flex; flex-direction:column; gap:10px; }
+  .team-grid-row{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .team-input{
+    width:100%; background:var(--panel-2); border:1px solid var(--border);
+    border-radius:8px; padding:12px 8px; text-align:center;
+    font-family:var(--font-mono); font-size:15px; outline:none;
+  }
+  .team-input.red{ color:var(--red-bright); }
+  .team-input.blue{ color:var(--blue-bright); }
+  .team-input.red:focus{ border-color:var(--red); }
+  .team-input.blue:focus{ border-color:var(--blue); }
+  .team-input::placeholder{ color:var(--muted-dim); font-family:var(--font-ui); }
+
+  .modal-actions{
+    display:flex; margin-top:18px; border-top:1px solid var(--border-soft);
+  }
+  .modal-actions button{
+    flex:1; padding:16px; background:none; border:none;
+    font-size:15px; font-weight:600; cursor:pointer; color:var(--muted);
+  }
+  .modal-actions button:first-child{ border-right:1px solid var(--border-soft); }
+  .modal-actions .create-btn{ color:var(--accent); }
+  .modal-actions button:active{ background:var(--panel-2); }
+  .modal-error{ color:var(--red-bright); font-size:12.5px; text-align:center; min-height:16px; padding:0 22px; }
+
+  /* ---------- BOARD ---------- */
+  #board-topbar{
+    display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    padding:10px clamp(10px,2vw,20px); flex-shrink:0;
+    border-bottom:1px solid var(--border-soft); background:var(--panel);
+  }
+  .topbar-btn{
+    display:flex; align-items:center; gap:6px;
+    background:var(--panel-2); border:1px solid var(--border);
+    color:var(--text); border-radius:8px; padding:9px 14px;
+    font-size:13px; font-weight:600; cursor:pointer; white-space:nowrap;
+  }
+  .topbar-btn:active{ background:var(--panel-3); }
+  .topbar-btn.exit-btn{ color:var(--muted); }
+  .board-title{
+    font-family:var(--font-mono); font-size:13px; color:var(--muted);
+    margin-right:auto; display:flex; align-items:center; gap:10px; padding-left:4px;
+  }
+  .board-title b{ color:var(--text); font-weight:600; }
+  .board-title .r-teams{ color:var(--red-bright); }
+  .board-title .b-teams{ color:var(--blue-bright); }
+
+  .tabs{ display:flex; gap:4px; background:var(--panel-2); padding:4px; border-radius:10px; border:1px solid var(--border); }
+  .tab-btn{
+    background:none; border:none; color:var(--muted); border-radius:7px;
+    padding:8px 14px; font-size:12.5px; font-weight:600; letter-spacing:0.4px;
+    cursor:pointer; text-transform:uppercase;
+  }
+  .tab-btn.active{ background:var(--accent); color:var(--accent-text); }
+
+  .tools, .size-group{ display:flex; gap:4px; background:var(--panel-2); padding:4px; border-radius:10px; border:1px solid var(--border); }
+  .tool-btn{
+    width:38px; height:38px; border-radius:7px; border:none; background:none;
+    color:var(--muted); display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .tool-btn.active{ background:var(--panel-3); color:var(--accent-bright); box-shadow:inset 0 0 0 1px var(--border); }
+  .tool-btn svg{ width:18px; height:18px; }
+  .tool-btn.clear-btn{ color:var(--red-bright); }
+
+  .size-group{ transition:opacity .12s ease; }
+  .size-group.disabled{ opacity:0.35; pointer-events:none; }
+  .size-btn{
+    width:34px; height:38px; border-radius:7px; border:none; background:none;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+  }
+  .size-btn.active{ background:var(--panel-3); box-shadow:inset 0 0 0 1px var(--border); }
+  .size-btn .dot{ display:block; border-radius:50%; background:var(--text); }
+  .size-btn.active .dot{ background:var(--accent-bright); }
+  .size-btn .dot.s{ width:6px; height:6px; }
+  .size-btn .dot.m{ width:10px; height:10px; }
+  .size-btn .dot.l{ width:15px; height:15px; }
+
+  #field-area{
+    flex:1; display:flex; align-items:center; justify-content:center;
+    padding:clamp(10px,2vw,26px); overflow:auto; min-height:0;
+  }
+  #field-wrap{ position:relative; width:100%; max-width:1180px; }
+  #field-container{
+    position:relative; width:100%;
+    aspect-ratio:2.33 / 1;
+    background:#000000;
+    border:2px solid rgba(255,255,255,0.55); border-radius:4px;
+    overflow:hidden;
+    touch-action:none;
+  }
+  .axis-label{
+    position:absolute; left:50%; white-space:nowrap;
+    color:#ffffff; font-family:var(--font-mono); font-weight:700;
+    font-size:clamp(11px,1.3vw,15px); letter-spacing:0.5px;
+    transform:translate(-50%,-50%) rotate(-90deg);
+    pointer-events:none;
+  }
+  .axis-label.left{ left:-10px; right:auto; }
+  .axis-label.right{ left:calc(100% + 10px); transform:translate(-50%,-50%) rotate(90deg); }
+  .center-line-v{
+    position:absolute; top:0; bottom:0; left:50%; width:2px;
+    background:rgba(255,255,255,0.85); transform:translateX(-1px); z-index:1;
+  }
+  .center-line-h{
+    position:absolute; left:0; right:0; top:50%; height:2px;
+    background:rgba(0,0,0,0.65); transform:translateY(-1px); z-index:2;
+  }
+  .guide-line{ position:absolute; top:0; bottom:0; width:2px; z-index:1; }
+  .guide-line.blue{ background:var(--bar-blue-body); }
+  .guide-line.red{ background:var(--bar-red-body); }
+
+  /* decorative game-piece dot clusters (field markings, not UI chrome) */
+  .field-dots{
+    position:absolute; background-image: radial-gradient(circle, var(--gold) 4.9px, transparent 5px);
+    background-size: 11px 11px; background-position:center; opacity:0.95; pointer-events:none; z-index:1;
+  }
+  .field-dots.center{ left:44.5%; top:21.7%; width:11%; height:56.6%; }
+  .field-dots.corner{ width:4.1%; height:12.8%; border:2px solid; box-sizing:border-box; }
+  .field-dots.corner.tl{ left:0.3%; top:19.9%; border-color:var(--bar-blue-body); }
+  .field-dots.corner.br{ right:0.3%; bottom:19.9%; border-color:var(--bar-red-body); }
+
+  /* alliance zone bars (thick colored bands flanking the center goal hexes) */
+  .zone-bar{ position:absolute; width:7.25%; z-index:1; pointer-events:none; }
+  .zone-bar.top{ top:16.05%; height:26.5%; }
+  .zone-bar.bottom{ top:57.45%; height:26.5%; }
+  .zone-bar.blue{ left:24.2%; }
+  .zone-bar.red{ right:24.2%; }
+  .zone-bar.blue.top{ background:linear-gradient(to bottom, var(--bar-blue-cap) 0%, var(--bar-blue-cap) 14%, var(--bar-blue-body) 14%, var(--bar-blue-body) 100%); }
+  .zone-bar.blue.bottom{ background:linear-gradient(to bottom, var(--bar-blue-body) 0%, var(--bar-blue-body) 86%, var(--bar-blue-cap) 86%, var(--bar-blue-cap) 100%); }
+  .zone-bar.red.top{ background:linear-gradient(to bottom, var(--bar-red-cap) 0%, var(--bar-red-cap) 14%, var(--bar-red-body) 14%, var(--bar-red-body) 100%); }
+  .zone-bar.red.bottom{ background:linear-gradient(to bottom, var(--bar-red-body) 0%, var(--bar-red-body) 86%, var(--bar-red-cap) 86%, var(--bar-red-cap) 100%); }
+
+  .loading-zone{ position:absolute; top:50%; height:12.2%; width:6.8%; z-index:1; transform:translateY(-50%); }
+  .loading-zone.blue{ left:0; }
+  .loading-zone.red{ right:0; }
+  .loading-zone.blue::after{ content:''; position:absolute; right:0; top:50%; height:calc(100% + 28px); width:2px; transform:translateY(-50%); background:var(--bar-blue-body); }
+  .loading-zone.red::after{ content:''; position:absolute; left:0; top:50%; height:calc(100% + 28px); width:2px; transform:translateY(-50%); background:var(--bar-red-body); }
+
+  .zone-hex{ position:absolute; top:50%; width:7%; aspect-ratio:1; transform:translate(-50%,-50%); pointer-events:none; z-index:3; opacity:0.75; }
+  .zone-hex.blue{ left:27.9%; color:var(--hex-color); }
+  .zone-hex.red{ left:72.1%; color:var(--hex-color); }
+
+  .robot{
+    position:absolute; transform:translate(-50%,-50%);
+    width:4.5%; height:10.5%;
+    border-radius:14%; display:flex; align-items:center; justify-content:center;
+    font-family:var(--font-mono); font-weight:700; font-size:clamp(13px,1.6vw,19px);
+    background:var(--robot-fill); color:#ffffff; cursor:grab; user-select:none;
+    z-index:5; touch-action:none;
+  }
+  .robot.dragging{ cursor:grabbing; z-index:20; box-shadow:0 6px 20px rgba(0,0,0,0.55); }
+  .robot.blue{ border:5px solid var(--robot-blue); }
+  .robot.red{ border:5px solid var(--robot-red); }
+
+  #draw-canvas{
+    position:absolute; inset:0; width:100%; height:100%;
+    z-index:10; pointer-events:none;
+  }
+  #draw-canvas.interactive{ pointer-events:auto; }
+  #draw-canvas.tool-pen.interactive{ cursor:crosshair; }
+  #draw-canvas.tool-eraser.interactive{ cursor:cell; }
+
+  @media (max-width:780px){
+    .board-title{ display:none; }
+    #board-topbar{ justify-content:space-between; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- HOME SCREEN -->
+  <div class="screen active" id="screen-home">
+    <div id="home-header">
+      <div class="logo-block">
+        <div class="logo-text-wrap">
+          <div class="logo-text">STRATEGY BOARD</div>
+          <div class="logo-rule"></div>
+        </div>
+      </div>
+      <button class="add-btn" id="btn-add-match" aria-label="Add match">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><line x1="12" y1="4" x2="12" y2="20"/><line x1="4" y1="12" x2="20" y2="12"/></svg>
+      </button>
+    </div>
+    <div id="match-list-wrap">
+      <div class="match-list" id="match-list"></div>
+    </div>
+  </div>
+
+  <!-- BOARD SCREEN -->
+  <div class="screen" id="screen-board">
+    <div id="board-topbar">
+      <button class="topbar-btn exit-btn" id="btn-exit">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" width="15" height="15"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+        Exit
+      </button>
+      <div class="board-title" id="board-title"></div>
+      <div class="tabs" id="section-tabs">
+        <button class="tab-btn" data-section="auto">Auto</button>
+        <button class="tab-btn" data-section="transition">Transition</button>
+        <button class="tab-btn" data-section="active">Active</button>
+        <button class="tab-btn" data-section="inactive">Inactive</button>
+      </div>
+      <div class="tools">
+        <button class="tool-btn" id="tool-move" title="Move robots" aria-label="Move">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2 L12 22 M2 12 L22 12 M5 9 L2 12 L5 15 M19 9 L22 12 L19 15 M9 5 L12 2 L15 5 M9 19 L12 22 L15 19"/></svg>
+        </button>
+        <button class="tool-btn" id="tool-pen" title="Pen" aria-label="Pen">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+        </button>
+        <button class="tool-btn" id="tool-eraser" title="Eraser" aria-label="Eraser">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3a1 1 0 0 1 0-1.4l9.6-9.6a1 1 0 0 1 1.4 0l5.7 5.7a1 1 0 0 1 0 1.4L11 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+        </button>
+        <button class="tool-btn clear-btn" id="tool-clear" title="Clear drawing" aria-label="Clear">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        </button>
+      </div>
+      <div class="size-group disabled" id="size-group" title="Line size">
+        <button class="size-btn" data-size="0" aria-label="Small"><span class="dot s"></span></button>
+        <button class="size-btn" data-size="1" aria-label="Medium"><span class="dot m"></span></button>
+        <button class="size-btn" data-size="2" aria-label="Large"><span class="dot l"></span></button>
+      </div>
+    </div>
+    <div id="field-area">
+      <div id="field-wrap">
+      <div id="field-container">
+        <div class="field-dots corner tl"></div>
+        <div class="field-dots corner br"></div>
+        <div class="field-dots center"></div>
+
+        <div class="loading-zone blue"></div>
+        <div class="loading-zone red"></div>
+
+        <div class="guide-line blue" style="left:24.6%;"></div>
+        <div class="guide-line blue" style="left:27.9%;"></div>
+        <div class="guide-line red" style="left:75.4%;"></div>
+        <div class="guide-line red" style="left:72.1%;"></div>
+
+        <div class="zone-bar blue top"></div>
+        <div class="zone-bar blue bottom"></div>
+        <div class="zone-bar red top"></div>
+        <div class="zone-bar red bottom"></div>
+
+        <div class="zone-hex blue">
+          <svg viewBox="0 0 100 100" width="100%" height="100%"><polygon points="50,4 93,27 93,73 50,96 7,73 7,27" fill="none" stroke="currentColor" stroke-width="4"/><circle cx="50" cy="50" r="16" fill="none" stroke="currentColor" stroke-width="4"/><circle cx="50" cy="50" r="4" fill="currentColor"/></svg>
+        </div>
+        <div class="zone-hex red">
+          <svg viewBox="0 0 100 100" width="100%" height="100%"><polygon points="50,4 93,27 93,73 50,96 7,73 7,27" fill="none" stroke="currentColor" stroke-width="4"/><circle cx="50" cy="50" r="16" fill="none" stroke="currentColor" stroke-width="4"/><circle cx="50" cy="50" r="4" fill="currentColor"/></svg>
+        </div>
+
+        <div class="center-line-h"></div>
+        <div class="center-line-v"></div>
+        <canvas id="draw-canvas"></canvas>
+        <!-- robots injected by JS -->
+      </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ADD MATCH MODAL -->
+<div id="modal-overlay">
+  <div class="modal">
+    <div class="modal-header"><h2>Add Match</h2></div>
+    <div class="modal-body">
+      <div>
+        <span class="field-label">Match Number</span>
+        <input type="text" inputmode="numeric" class="match-num-input" id="input-match-number" placeholder="e.g. 12">
+      </div>
+      <div class="team-grid">
+        <div class="team-grid-row">
+          <input type="text" inputmode="numeric" class="team-input red" placeholder="Red 1" id="input-red-1">
+          <input type="text" inputmode="numeric" class="team-input red" placeholder="Red 2" id="input-red-2">
+          <input type="text" inputmode="numeric" class="team-input red" placeholder="Red 3" id="input-red-3">
+        </div>
+        <div class="team-grid-row">
+          <input type="text" inputmode="numeric" class="team-input blue" placeholder="Blue 1" id="input-blue-1">
+          <input type="text" inputmode="numeric" class="team-input blue" placeholder="Blue 2" id="input-blue-2">
+          <input type="text" inputmode="numeric" class="team-input blue" placeholder="Blue 3" id="input-blue-3">
+        </div>
+      </div>
+    </div>
+    <div class="modal-error" id="modal-error"></div>
+    <div class="modal-actions">
+      <button id="btn-cancel">Cancel</button>
+      <button class="create-btn" id="btn-create">Create</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- STATE ---------------- */
+  var STORAGE_KEY = "strategyBoardMatches";
+  var matches = [];
+  var currentMatchId = null;
+  var currentSection = "auto";
+  var currentTool = "move"; // move | pen | eraser
+  var saveTimer = null;
+  var dragState = null;
+  var strokeState = null;
+
+  var PEN_SIZES = [2, 3.5, 6];
+  var ERASER_SIZES = [16, 28, 46];
+  var penSizeIdx = 1;
+  var eraserSizeIdx = 1;
+
+  var SECTIONS = ["auto","transition","active","inactive"];
+
+  function uid(){
+    if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'id-' + Date.now() + '-' + Math.random().toString(16).slice(2);
+  }
+
+  function defaultRobots(){
+    return {
+      blue: [ {x:0.222,y:0.084}, {x:0.222,y:0.50}, {x:0.222,y:0.916} ],
+      red:  [ {x:0.778,y:0.084}, {x:0.778,y:0.50}, {x:0.778,y:0.916} ]
+    };
+  }
+  function defaultSection(){
+    return { robots: defaultRobots(), strokes: [] };
+  }
+  function freshSections(){
+    var s = {};
+    SECTIONS.forEach(function(k){ s[k] = defaultSection(); });
+    return s;
+  }
+
+  /* ---------------- PERSISTENCE (localStorage: works standalone, offline, on-device) ---------------- */
+  function loadMatches(){
+    try{
+      var raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }catch(e){
+      console.error("load failed", e);
+      return [];
+    }
+  }
+  function saveMatchesNow(){
+    try{
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(matches));
+    }catch(e){
+      console.error("save failed", e);
+    }
+  }
+  function saveMatchesDebounced(){
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(saveMatchesNow, 350);
+  }
+
+  /* ---------------- ICONS ---------------- */
+  var DOTS_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg>';
+
+  /* ---------------- HOME RENDER ---------------- */
+  var listEl = document.getElementById('match-list');
+
+  function renderHome(){
+    listEl.innerHTML = '';
+    if(matches.length === 0){
+      var empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.innerHTML = '<strong>No matches yet</strong>Tap the + button to add your first match.';
+      listEl.appendChild(empty);
+      return;
+    }
+    matches.forEach(function(m){
+      var row = document.createElement('div');
+      row.className = 'match-row';
+      row.dataset.id = m.id;
+
+      var num = document.createElement('div');
+      num.className = 'match-number';
+      num.textContent = m.number;
+
+      var teams = document.createElement('div');
+      teams.className = 'match-teams';
+      teams.innerHTML =
+        '<div class="team-set red"><span>'+esc(m.red[0])+'</span><span>'+esc(m.red[1])+'</span><span>'+esc(m.red[2])+'</span></div>'+
+        '<div class="vs-label">VS</div>'+
+        '<div class="team-set blue"><span>'+esc(m.blue[0])+'</span><span>'+esc(m.blue[1])+'</span><span>'+esc(m.blue[2])+'</span></div>';
+
+      var dotsBtn = document.createElement('button');
+      dotsBtn.className = 'dots-btn';
+      dotsBtn.innerHTML = DOTS_SVG;
+      dotsBtn.addEventListener('click', function(e){
+        e.stopPropagation();
+        toggleRowMenu(row);
+      });
+
+      var menu = document.createElement('div');
+      menu.className = 'row-menu';
+      menu.id = 'menu-'+m.id;
+      menu.innerHTML = '<button type="button">Delete match</button>';
+      menu.querySelector('button').addEventListener('click', function(e){
+        e.stopPropagation();
+        deleteMatch(m.id);
+      });
+
+      row.appendChild(num);
+      row.appendChild(teams);
+      row.appendChild(dotsBtn);
+      row.appendChild(menu);
+
+      row.addEventListener('click', function(){
+        openBoard(m.id);
+      });
+
+      listEl.appendChild(row);
+    });
+  }
+
+  function toggleRowMenu(row){
+    var menu = row.querySelector('.row-menu');
+    var isOpen = menu.classList.contains('open');
+    document.querySelectorAll('.row-menu.open').forEach(function(m){ m.classList.remove('open'); });
+    if(!isOpen){ menu.classList.add('open'); }
+  }
+  document.addEventListener('click', function(){
+    document.querySelectorAll('.row-menu.open').forEach(function(m){ m.classList.remove('open'); });
+  });
+
+  function deleteMatch(id){
+    matches = matches.filter(function(m){ return m.id !== id; });
+    saveMatchesNow();
+    renderHome();
+  }
+
+  function esc(s){
+    var d = document.createElement('div');
+    d.textContent = s == null ? '' : String(s);
+    return d.innerHTML;
+  }
+
+  /* ---------------- ADD MATCH MODAL ---------------- */
+  var overlay = document.getElementById('modal-overlay');
+  var errEl = document.getElementById('modal-error');
+
+  function openModal(){
+    ['input-match-number','input-red-1','input-red-2','input-red-3','input-blue-1','input-blue-2','input-blue-3'].forEach(function(id){
+      document.getElementById(id).value = '';
+    });
+    errEl.textContent = '';
+    overlay.classList.add('open');
+    setTimeout(function(){ document.getElementById('input-match-number').focus(); }, 50);
+  }
+  function closeModal(){ overlay.classList.remove('open'); }
+
+  document.getElementById('btn-add-match').addEventListener('click', openModal);
+  document.getElementById('btn-cancel').addEventListener('click', closeModal);
+  overlay.addEventListener('click', function(e){ if(e.target === overlay) closeModal(); });
+
+  document.getElementById('btn-create').addEventListener('click', function(){
+    var num = document.getElementById('input-match-number').value.trim();
+    var r = [1,2,3].map(function(i){ return document.getElementById('input-red-'+i).value.trim(); });
+    var b = [1,2,3].map(function(i){ return document.getElementById('input-blue-'+i).value.trim(); });
+
+    if(!num || r.some(function(v){return !v;}) || b.some(function(v){return !v;})){
+      errEl.textContent = 'Please fill in the match number and all six team numbers.';
+      return;
+    }
+
+    var match = {
+      id: uid(),
+      number: num,
+      red: r,
+      blue: b,
+      sections: freshSections()
+    };
+    matches.unshift(match);
+    saveMatchesNow();
+    renderHome();
+    closeModal();
+  });
+
+  /* ---------------- BOARD ---------------- */
+  var screenHome = document.getElementById('screen-home');
+  var screenBoard = document.getElementById('screen-board');
+  var fieldWrap = document.getElementById('field-wrap');
+  var fieldContainer = document.getElementById('field-container');
+  var canvas = document.getElementById('draw-canvas');
+  var ctx = canvas.getContext('2d');
+  var boardTitle = document.getElementById('board-title');
+  var sizeGroup = document.getElementById('size-group');
+
+  function getMatch(id){ return matches.find(function(m){ return m.id === id; }); }
+
+  function openBoard(id){
+    currentMatchId = id;
+    currentSection = 'auto';
+    currentTool = 'move';
+    var m = getMatch(id);
+    boardTitle.innerHTML = 'Match <b>'+esc(m.number)+'</b> &nbsp; <span class="r-teams">'+esc(m.red.join(' · '))+'</span> vs <span class="b-teams">'+esc(m.blue.join(' · '))+'</span>';
+    screenHome.classList.remove('active');
+    screenBoard.classList.add('active');
+    updateTabsUI();
+    updateToolsUI();
+    renderRobots();
+    requestAnimationFrame(function(){
+      fitCanvas();
+      redrawStrokes();
+    });
+  }
+
+  function closeBoard(){
+    saveMatchesNow();
+    screenBoard.classList.remove('active');
+    screenHome.classList.add('active');
+    renderHome();
+  }
+  document.getElementById('btn-exit').addEventListener('click', closeBoard);
+
+  /* tabs */
+  document.getElementById('section-tabs').addEventListener('click', function(e){
+    var btn = e.target.closest('.tab-btn');
+    if(!btn) return;
+    currentSection = btn.dataset.section;
+    updateTabsUI();
+    renderRobots();
+    fitCanvas();
+    redrawStrokes();
+  });
+  function updateTabsUI(){
+    document.querySelectorAll('.tab-btn').forEach(function(b){
+      b.classList.toggle('active', b.dataset.section === currentSection);
+    });
+  }
+
+  /* tools */
+  function setTool(t){
+    currentTool = t;
+    updateToolsUI();
+  }
+  document.getElementById('tool-move').addEventListener('click', function(){ setTool('move'); });
+  document.getElementById('tool-pen').addEventListener('click', function(){ setTool('pen'); });
+  document.getElementById('tool-eraser').addEventListener('click', function(){ setTool('eraser'); });
+  document.getElementById('tool-clear').addEventListener('click', function(){
+    var sec = currentSectionData();
+    if(!sec) return;
+    sec.strokes = [];
+    saveMatchesDebounced();
+    redrawStrokes();
+  });
+
+  sizeGroup.addEventListener('click', function(e){
+    var btn = e.target.closest('.size-btn');
+    if(!btn) return;
+    var idx = parseInt(btn.dataset.size, 10);
+    if(currentTool === 'pen') penSizeIdx = idx;
+    else if(currentTool === 'eraser') eraserSizeIdx = idx;
+    updateToolsUI();
+  });
+
+  function updateToolsUI(){
+    document.getElementById('tool-move').classList.toggle('active', currentTool === 'move');
+    document.getElementById('tool-pen').classList.toggle('active', currentTool === 'pen');
+    document.getElementById('tool-eraser').classList.toggle('active', currentTool === 'eraser');
+    canvas.classList.toggle('interactive', currentTool === 'pen' || currentTool === 'eraser');
+    canvas.classList.toggle('tool-pen', currentTool === 'pen');
+    canvas.classList.toggle('tool-eraser', currentTool === 'eraser');
+
+    var isDrawTool = currentTool === 'pen' || currentTool === 'eraser';
+    sizeGroup.classList.toggle('disabled', !isDrawTool);
+    var activeIdx = currentTool === 'eraser' ? eraserSizeIdx : penSizeIdx;
+    document.querySelectorAll('.size-btn').forEach(function(b){
+      b.classList.toggle('active', isDrawTool && parseInt(b.dataset.size,10) === activeIdx);
+    });
+  }
+
+  function currentSectionData(){
+    var m = getMatch(currentMatchId);
+    if(!m) return null;
+    return m.sections[currentSection];
+  }
+
+  /* ---------------- ROBOTS ---------------- */
+  var STATION_Y = [0.084, 0.5, 0.916];
+
+  function renderRobots(){
+    fieldContainer.querySelectorAll('.robot').forEach(function(el){ el.remove(); });
+    var m = getMatch(currentMatchId);
+    var sec = currentSectionData();
+    if(!m || !sec) return;
+    ['blue','red'].forEach(function(alliance){
+      for(var i=0;i<3;i++){
+        var el = document.createElement('div');
+        el.className = 'robot ' + alliance;
+        el.dataset.alliance = alliance;
+        el.dataset.index = i;
+        var pos = sec.robots[alliance][i];
+        el.style.left = (pos.x*100) + '%';
+        el.style.top = (pos.y*100) + '%';
+        el.textContent = m[alliance][i];
+        attachDrag(el);
+        fieldContainer.appendChild(el);
+      }
+    });
+    renderAxisLabels(m);
+  }
+
+  function renderAxisLabels(m){
+    fieldWrap.querySelectorAll('.axis-label').forEach(function(el){ el.remove(); });
+    if(!m) return;
+    ['blue','red'].forEach(function(alliance){
+      var side = alliance === 'blue' ? 'left' : 'right';
+      for(var i=0;i<3;i++){
+        var el = document.createElement('div');
+        el.className = 'axis-label ' + side;
+        el.style.top = (STATION_Y[i]*100) + '%';
+        var teamIdx = i;
+        el.textContent = m[alliance][teamIdx];
+        fieldWrap.appendChild(el);
+      }
+    });
+  }
+
+  function attachDrag(el){
+    el.addEventListener('pointerdown', function(e){
+      if(currentTool !== 'move') return;
+      e.preventDefault();
+      e.stopPropagation();
+      el.setPointerCapture(e.pointerId);
+      el.classList.add('dragging');
+      dragState = { el: el, alliance: el.dataset.alliance, index: parseInt(el.dataset.index,10) };
+      moveRobotTo(e);
+    });
+    el.addEventListener('pointermove', function(e){
+      if(!dragState || dragState.el !== el) return;
+      moveRobotTo(e);
+    });
+    function end(){
+      if(!dragState || dragState.el !== el) return;
+      el.classList.remove('dragging');
+      dragState = null;
+      saveMatchesDebounced();
+    }
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+  }
+
+  function moveRobotTo(e){
+    var rect = fieldContainer.getBoundingClientRect();
+    var x = (e.clientX - rect.left) / rect.width;
+    var y = (e.clientY - rect.top) / rect.height;
+    x = Math.min(1, Math.max(0, x));
+    y = Math.min(1, Math.max(0, y));
+    dragState.el.style.left = (x*100) + '%';
+    dragState.el.style.top = (y*100) + '%';
+    var sec = currentSectionData();
+    if(sec){
+      sec.robots[dragState.alliance][dragState.index] = { x: x, y: y };
+    }
+  }
+
+  /* ---------------- CANVAS DRAWING ---------------- */
+  function fitCanvas(){
+    var rect = fieldContainer.getBoundingClientRect();
+    var dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.max(1, Math.round(rect.width * dpr));
+    canvas.height = Math.max(1, Math.round(rect.height * dpr));
+    ctx.setTransform(1,0,0,1,0,0);
+    ctx.scale(dpr, dpr);
+  }
+  window.addEventListener('resize', function(){
+    if(!screenBoard.classList.contains('active')) return;
+    fitCanvas();
+    redrawStrokes();
+  });
+
+  function relPos(e){
+    var rect = canvas.getBoundingClientRect();
+    return {
+      x: (e.clientX - rect.left) / rect.width,
+      y: (e.clientY - rect.top) / rect.height
+    };
+  }
+
+  function strokeSegment(p1, p2, tool, size){
+    var rect = canvas.getBoundingClientRect();
+    ctx.beginPath();
+    ctx.moveTo(p1.x * rect.width, p1.y * rect.height);
+    ctx.lineTo(p2.x * rect.width, p2.y * rect.height);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    if(tool === 'eraser'){
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.lineWidth = size != null ? size : ERASER_SIZES[eraserSizeIdx];
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = size != null ? size : PEN_SIZES[penSizeIdx];
+    }
+    ctx.stroke();
+  }
+
+  function strokeDot(p, tool, size){
+    var rect = canvas.getBoundingClientRect();
+    ctx.beginPath();
+    var r;
+    if(tool === 'eraser'){
+      ctx.globalCompositeOperation = 'destination-out';
+      r = (size != null ? size : ERASER_SIZES[eraserSizeIdx]) / 2;
+    } else {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = '#ffffff';
+      r = (size != null ? size : PEN_SIZES[penSizeIdx]) / 2;
+    }
+    ctx.arc(p.x*rect.width, p.y*rect.height, r, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  function redrawStrokes(){
+    var rect = canvas.getBoundingClientRect();
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.clearRect(0, 0, rect.width, rect.height);
+    var sec = currentSectionData();
+    if(!sec) return;
+    sec.strokes.forEach(function(s){
+      var sz = s.size;
+      if(s.points.length < 2){
+        if(s.points.length === 1) strokeDot(s.points[0], s.tool, sz);
+        return;
+      }
+      for(var i=1;i<s.points.length;i++){
+        strokeSegment(s.points[i-1], s.points[i], s.tool, sz);
+      }
+    });
+    ctx.globalCompositeOperation = 'source-over';
+  }
+
+  canvas.addEventListener('pointerdown', function(e){
+    if(currentTool !== 'pen' && currentTool !== 'eraser') return;
+    e.preventDefault();
+    canvas.setPointerCapture(e.pointerId);
+    var p = relPos(e);
+    var size = currentTool === 'eraser' ? ERASER_SIZES[eraserSizeIdx] : PEN_SIZES[penSizeIdx];
+    strokeState = { tool: currentTool, size: size, points: [p] };
+    strokeDot(p, currentTool, size);
+  });
+  canvas.addEventListener('pointermove', function(e){
+    if(!strokeState) return;
+    var p = relPos(e);
+    var last = strokeState.points[strokeState.points.length - 1];
+    strokeSegment(last, p, strokeState.tool, strokeState.size);
+    strokeState.points.push(p);
+  });
+  function endStroke(){
+    if(!strokeState) return;
+    var sec = currentSectionData();
+    if(sec) sec.strokes.push(strokeState);
+    strokeState = null;
+    saveMatchesDebounced();
+  }
+  canvas.addEventListener('pointerup', endStroke);
+  canvas.addEventListener('pointercancel', endStroke);
+
+  /* ---------------- INIT ---------------- */
+  matches = loadMatches();
+  renderHome();
+
+})();
+</script>
+</body>
+</html>
