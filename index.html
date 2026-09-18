@@ -370,6 +370,7 @@
         <button class="tab-btn" data-section="transition">Transition</button>
         <button class="tab-btn" data-section="active">Active</button>
         <button class="tab-btn" data-section="inactive">Inactive</button>
+        <button class="tab-btn" data-section="endgame">Endgame</button>
       </div>
       <div class="tools">
         <button class="tool-btn" id="tool-move" title="Move robots" aria-label="Move">
@@ -478,7 +479,7 @@
   var penSizeIdx = 1;
   var eraserSizeIdx = 1;
 
-  var SECTIONS = ["auto","transition","active","inactive"];
+  var SECTIONS = ["auto","transition","active","inactive","endgame"];
 
   function uid(){
     if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
@@ -504,7 +505,15 @@
   function loadMatches(){
     try{
       var raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
+      var list = raw ? JSON.parse(raw) : [];
+      // migrate matches saved before newer sections existed
+      list.forEach(function(m){
+        if(!m.sections) m.sections = {};
+        SECTIONS.forEach(function(k){
+          if(!m.sections[k]) m.sections[k] = defaultSection();
+        });
+      });
+      return list;
     }catch(e){
       console.error("load failed", e);
       return [];
